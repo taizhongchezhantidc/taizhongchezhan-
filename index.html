@@ -10,87 +10,129 @@
       color-scheme: light;
       font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      background: #f5f7fb;
+      background: #f3f4f6;
       color: #1f2937;
     }
+
     .wrap {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
-      box-sizing: border-box;
     }
+
     .card {
       width: 100%;
-      max-width: 520px;
-      background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-      padding: 24px;
-      box-sizing: border-box;
+      max-width: 620px;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      padding: 28px;
     }
+
     h1 {
+      margin: 0 0 16px;
       font-size: 28px;
-      margin: 0 0 12px;
+      color: #0f2747;
     }
-    .muted {
-      color: #6b7280;
-      line-height: 1.7;
-      margin: 0 0 20px;
+
+    .desc {
+      margin: 0 0 24px;
+      color: #64748b;
+      line-height: 1.8;
+      font-size: 16px;
     }
+
     .site-box {
       background: #f3f4f6;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 18px;
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 20px;
     }
+
     .label {
-      font-size: 13px;
+      font-size: 14px;
       color: #6b7280;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
+
     .value {
       font-size: 24px;
-      font-weight: 700;
+      font-weight: 800;
+      color: #0f2747;
       word-break: break-word;
     }
+
     button {
       width: 100%;
       border: 0;
-      border-radius: 14px;
-      padding: 16px;
+      border-radius: 16px;
+      padding: 18px;
       font-size: 18px;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
-      margin-top: 10px;
+      transition: transform .05s ease, opacity .2s ease;
     }
+
+    button:active {
+      transform: scale(0.99);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
     .primary {
       background: #06c755;
-      color: white;
+      color: #fff;
+      margin-bottom: 14px;
     }
+
     .secondary {
       background: #e5e7eb;
       color: #111827;
     }
+
     .status {
+      margin-top: 22px;
+      font-size: 15px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .status.ok {
+      color: #047857;
+    }
+
+    .status.err {
+      color: #b91c1c;
+    }
+
+    .hint {
       margin-top: 16px;
       font-size: 14px;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      color: #374151;
+      color: #6b7280;
+      line-height: 1.8;
+      word-break: break-all;
     }
-    .ok { color: #047857; }
-    .err { color: #b91c1c; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
       <h1>巡場啟動</h1>
-      <p class="muted">掃描 QR 後，按下按鈕即可把巡場點送到 LINE 聊天室，接著就能直接回覆狀態與上傳照片。</p>
+      <p class="desc">
+        掃描 QR 後，按下按鈕即可把巡場點送到 LINE 聊天室，接著就能直接回覆狀態與上傳照片。
+      </p>
 
       <div class="site-box">
         <div class="label">巡場點代碼</div>
@@ -101,34 +143,69 @@
       <button class="secondary" id="closeBtn" type="button">關閉</button>
 
       <div class="status" id="status">正在初始化 LIFF...</div>
+      <div class="hint" id="hint"></div>
     </div>
   </div>
 
   <script>
     const LIFF_ID = '2009710295-JMbggFav';
 
-    function getSiteFromQuery() {
-      const params = new URLSearchParams(window.location.search);
-      const site = (params.get('site') || '').trim().toUpperCase();
-      return site;
-    }
-
     function setStatus(message, type = '') {
       const el = document.getElementById('status');
       el.textContent = message;
-      el.className = 'status ' + type;
+      el.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function setHint(message = '') {
+      document.getElementById('hint').textContent = message;
+    }
+
+    function normalizeSite(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function getSiteFromQuery() {
+      const outerParams = new URLSearchParams(window.location.search);
+
+      // 1. 先找一般參數 ?site=A01
+      let site = normalizeSite(outerParams.get('site'));
+      if (site) return site;
+
+      // 2. 再找 LIFF 包進來的 liff.state
+      const liffState = outerParams.get('liff.state') || '';
+      if (liffState) {
+        let stateString = liffState.trim();
+
+        // 常見型態：?site=A01
+        if (stateString.startsWith('?')) {
+          stateString = stateString.slice(1);
+        }
+
+        // 保險處理一些可能出現的形式
+        if (stateString.startsWith('/?')) {
+          stateString = stateString.slice(2);
+        } else if (stateString.startsWith('/')) {
+          stateString = stateString.slice(1);
+        }
+
+        const innerParams = new URLSearchParams(stateString);
+        site = normalizeSite(innerParams.get('site'));
+        if (site) return site;
+      }
+
+      return '';
     }
 
     async function main() {
-      const site = getSiteFromQuery();
       const siteCodeEl = document.getElementById('siteCode');
       const sendBtn = document.getElementById('sendBtn');
       const closeBtn = document.getElementById('closeBtn');
 
+      const site = getSiteFromQuery();
       siteCodeEl.textContent = site || '未提供 site 參數';
 
       closeBtn.addEventListener('click', () => {
-        if (window.liff) {
+        if (window.liff && typeof liff.closeWindow === 'function') {
           liff.closeWindow();
         } else {
           window.close();
@@ -136,14 +213,15 @@
       });
 
       if (!site) {
-        setStatus('缺少巡場點代碼。請把 QR 內容做成：\nhttps://liff.line.me/2009710295-JMbggFav?site=A01', 'err');
+        setStatus('缺少巡場點代碼。', 'err');
+        setHint('請把 QR 內容做成：https://liff.line.me/2009710295-JMbggFav?site=A01');
         return;
       }
 
       try {
         await liff.init({ liffId: LIFF_ID });
       } catch (err) {
-        setStatus('LIFF 初始化失敗：' + (err?.message || err), 'err');
+        setStatus('LIFF 初始化失敗：' + (err?.message || String(err)), 'err');
         return;
       }
 
@@ -155,6 +233,7 @@
 
       sendBtn.disabled = false;
       setStatus('初始化完成，按下按鈕即可送出：巡場:' + site);
+      setHint('');
 
       sendBtn.addEventListener('click', async () => {
         sendBtn.disabled = true;
@@ -162,7 +241,7 @@
 
         try {
           if (!liff.isInClient()) {
-            throw new Error('目前不是在 LINE App 內開啟，無法直接送訊息到聊天室。');
+            throw new Error('目前不是在 LINE App 內開啟，無法直接送訊息到聊天室。請從 LINE 內開啟此 LIFF。');
           }
 
           await liff.sendMessages([
@@ -179,7 +258,7 @@
           }, 900);
         } catch (err) {
           sendBtn.disabled = false;
-          setStatus('送出失敗：' + (err?.message || err), 'err');
+          setStatus('送出失敗：' + (err?.message || String(err)), 'err');
         }
       });
     }
