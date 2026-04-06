@@ -225,11 +225,18 @@
         return;
       }
 
-      if (!liff.isLoggedIn()) {
-        setStatus('正在登入 LINE...');
-        liff.login();
-        return;
-      }
+    if (!liff.isLoggedIn()) {
+      setStatus('正在登入 LINE...');
+    
+      // 先把目前巡場點暫存起來
+      sessionStorage.setItem('patrolSite', site);
+    
+      // 登入後回到目前這個網址
+      liff.login({
+        redirectUri: window.location.href
+      });
+      return;
+    }
 
       sendBtn.disabled = false;
       setStatus('初始化完成，按下按鈕即可送出：巡場:' + site);
