@@ -11,9 +11,7 @@
       font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -82,14 +80,8 @@
       transition: transform .05s ease, opacity .2s ease;
     }
 
-    button:active {
-      transform: scale(0.99);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.65;
-    }
+    button:active { transform: scale(0.99); }
+    button:disabled { cursor: not-allowed; opacity: 0.65; }
 
     .primary {
       background: #06c755;
@@ -109,13 +101,8 @@
       white-space: pre-wrap;
     }
 
-    .status.ok {
-      color: #047857;
-    }
-
-    .status.err {
-      color: #b91c1c;
-    }
+    .status.ok { color: #047857; }
+    .status.err { color: #b91c1c; }
 
     .hint {
       margin-top: 16px;
@@ -167,21 +154,16 @@
     function getSiteFromQuery() {
       const outerParams = new URLSearchParams(window.location.search);
 
-      // 1. 先找一般參數 ?site=A01
       let site = normalizeSite(outerParams.get('site'));
       if (site) return site;
 
-      // 2. 再找 LIFF 包進來的 liff.state
       const liffState = outerParams.get('liff.state') || '';
       if (liffState) {
         let stateString = liffState.trim();
 
-        // 常見型態：?site=A01
         if (stateString.startsWith('?')) {
           stateString = stateString.slice(1);
         }
-
-        // 保險處理一些可能出現的形式
         if (stateString.startsWith('/?')) {
           stateString = stateString.slice(2);
         } else if (stateString.startsWith('/')) {
@@ -192,6 +174,9 @@
         site = normalizeSite(innerParams.get('site'));
         if (site) return site;
       }
+
+      site = normalizeSite(sessionStorage.getItem('patrolSite'));
+      if (site) return site;
 
       return '';
     }
@@ -225,18 +210,14 @@
         return;
       }
 
-    if (!liff.isLoggedIn()) {
-      setStatus('正在登入 LINE...');
-    
-      // 先把目前巡場點暫存起來
-      sessionStorage.setItem('patrolSite', site);
-    
-      // 登入後回到目前這個網址
-      liff.login({
-        redirectUri: window.location.href
-      });
-      return;
-    }
+      if (!liff.isLoggedIn()) {
+        setStatus('正在登入 LINE...');
+        sessionStorage.setItem('patrolSite', site);
+        liff.login({
+          redirectUri: window.location.href
+        });
+        return;
+      }
 
       sendBtn.disabled = false;
       setStatus('初始化完成，按下按鈕即可送出：巡場:' + site);
@@ -259,6 +240,8 @@
           ]);
 
           setStatus('已送出成功，請回到聊天室繼續輸入狀態與上傳照片。', 'ok');
+
+          sessionStorage.removeItem('patrolSite');
 
           setTimeout(() => {
             liff.closeWindow();
